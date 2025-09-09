@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 #Make sure we are using SI units for all of this stuff. 
-kb = 1.38**-23 #J/K
-mCs = 133*1.67**-27 #kg
+kb = 1.38e-23 #J/K
+mCs = 133*1.67e-27 #kg
 
 pixel_size_mag = 25e-6/7.24 #meters
 
@@ -60,5 +60,5 @@ axs[1].legend()
 plt.tight_layout()
 plt.show()
 
-print("Temperature is: ", popt_x[1])
-print(popt_x)
+print("Temperature along x is: ", popt_x[1])
+print("Temeprature along y is: ", popt_y[1])

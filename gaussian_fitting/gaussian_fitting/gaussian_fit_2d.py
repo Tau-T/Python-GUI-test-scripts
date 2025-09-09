@@ -23,19 +23,25 @@ image = imread(image_path)
 
 print(f"Image shape: {image.shape}, dtype: {image.dtype}, max: {np.max(image)}")
 
-# Step 1: Smooth
-smoothed = gaussian_filter(image, sigma=3)
 
-# Step 2: Rough center (pixel)
-y0, x0 = np.unravel_index(np.argmax(smoothed), smoothed.shape)
+def find_center(image):
+    # Step 1: Smooth
+    smoothed = gaussian_filter(image, sigma=3)
 
-# Step 3: Refine with center of mass in a local window
-window = image[y0-10:y0+10, x0-10:x0+10]
-dy, dx = center_of_mass(window)
-y0_refined = int(np.floor(y0 - 10 + dy))
-x0_refined = int(np.floor(x0 - 10 + dx))
+    # Step 2: Rough center (pixel)
+    y0, x0 = np.unravel_index(np.argmax(smoothed), smoothed.shape)
 
-print(x0_refined,y0_refined)
+    # Step 3: Refine with center of mass in a local window
+    window = image[y0-10:y0+10, x0-10:x0+10]
+    dy, dx = center_of_mass(window)
+    y0_refined = int(np.floor(y0 - 10 + dy))
+    x0_refined = int(np.floor(x0 - 10 + dx))
+
+    print(x0_refined,y0_refined)
+
+    return x0_refined, y0_refined
+
+x0_refined, y0_refined = find_center(image)
 # --- Extract small sub-image around click for fitting ---
 half_size = 100   # size of ROI box around click
 x_min = max(0, x0_refined - half_size)
@@ -57,6 +63,7 @@ y_index, x_index = np.indices(sub_img.shape)
 A0 = sub_img.max() - np.median(sub_img)
 x0 = x0_refined #replaced the click input with a intial guess by searching for the maximum. 
 y0 = y0_refined
+
 sigma_x0 = sigma_y0 = 5
 theta0 = 0
 offset0 = np.median(sub_img)
@@ -79,15 +86,18 @@ print(f"Amplitude: {A:.1f}, Offset: {offset:.1f}")
 
 print(time.time()-tinitial)
 # --- Plot data and fit ---
-fit_img = twoD_gaussian((x_indices, y_indices), *popt).reshape(sub_img.shape)
+#make x and y array for plotting the fit
+y_array, x_array = np.indices(image.shape)
+
+fit_img = twoD_gaussian((x_array, y_array), *popt).reshape(image.shape)
 
 fig, axs = plt.subplots(1, 3, figsize=(15,5))
-axs[0].imshow(sub_img, cmap="jet", origin="lower")
-axs[0].contour(x_index,y_index,fit_img, levels=2, cmap = 'YlOrRd') #how do I change the contour's to be plotted on the 1 sigma and 2 sigma of the fit? 
+axs[0].imshow(image, cmap="jet", origin="lower") #plot the full image
+axs[0].contour(x_array,y_array,fit_img, levels=2, cmap = 'YlOrRd') #how do I change the contour's to be plotted on the 1 sigma and 2 sigma of the fit? Plot the fit to the full image
 axs[0].set_title("Data (cropped)")
 axs[1].imshow(fit_img, cmap="jet", origin="lower")
 axs[1].set_title("2D Gaussian Fit")
-axs[2].imshow(sub_img - fit_img, cmap="bwr", origin="lower")
+axs[2].imshow(image - fit_img, cmap="bwr", origin="lower")
 axs[2].set_title("Residuals")
 plt.tight_layout()
 plt.show()

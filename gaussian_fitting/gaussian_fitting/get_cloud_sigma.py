@@ -2,6 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tifffile import imread
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter, center_of_mass
+import time
+
+
+def find_center(image):
+    # Step 1: Smooth
+    smoothed = gaussian_filter(image, sigma=3)
+
+    # Step 2: Rough center (pixel)
+    y0, x0 = np.unravel_index(np.argmax(smoothed), smoothed.shape)
+
+    # Step 3: Refine with center of mass in a local window
+    window = image[y0-10:y0+10, x0-10:x0+10]
+    dy, dx = center_of_mass(window)
+    y0_refined = int(np.floor(y0 - 10 + dy))
+    x0_refined = int(np.floor(x0 - 10 + dx))
+
+    print(x0_refined,y0_refined)
+
+    return x0_refined, y0_refined
 
 def get_cloud_sigma(image_path):
     # --- Gaussian function ---
@@ -14,24 +34,29 @@ def get_cloud_sigma(image_path):
     image = imread(image_path)
 
     # --- Display basic info ---
-    print(f"Image shape: {image.shape}")
-    print(f"Image dtype: {image.dtype}")
-    print(f"Max pixel value: {np.max(image)}")
+    # print(f"Image shape: {image.shape}")
+    # print(f"Image dtype: {image.dtype}")
+    # print(f"Max pixel value: {np.max(image)}")
 
-    # --- Display image ---
-    plt.figure(figsize=(8, 6))
-    plt.imshow(image, cmap='jet', vmin=0, vmax=np.max(image))
-    plt.title("Click on a point to analyze")
-    plt.xlabel("X pixels")
-    plt.ylabel("Y pixels")
-    plt.colorbar(label="Pixel value")
+    # # --- Display image ---
+    # plt.figure(figsize=(8, 6))
+    # plt.imshow(image, cmap='jet', vmin=0, vmax=np.max(image))
+    # plt.title("Click on a point to analyze")
+    # plt.xlabel("X pixels")
+    # plt.ylabel("Y pixels")
+    # plt.colorbar(label="Pixel value")
 
-    # --- Use ginput to select a point ---
-    print("Click on a point in the image...")
-    x_click, y_click = plt.ginput(1)[0]
-    x_click = int(round(x_click))
-    y_click = int(round(y_click))
-    plt.close()
+    # # --- Use ginput to select a point ---
+    # print("Click on a point in the image...")
+    # x_click, y_click = plt.ginput(1)[0]
+    
+
+    # x_click = int(round(x_click))
+    # y_click = int(round(y_click))
+    # plt.close()
+
+    #change to finding the center in the ROI
+    x_click, y_click = find_center(image)
 
     print(f"Selected pixel: x={x_click}, y={y_click}")
 
@@ -53,26 +78,26 @@ def get_cloud_sigma(image_path):
     # --- Plot results ---
     fig, axs = plt.subplots(1, 2, figsize=(12, 5)) #create a plot with one row and 2 columns. 
 
-    # Horizontal line
-    axs[0].plot(x_pixels, x_line, 'b', label='Data')
-    axs[0].plot(x_pixels, gaussian(x_pixels, *popt_x), 'r--', label='Gaussian fit')
-    axs[0].axvline(popt_x[1], color='k', linestyle=':', label='Center')
-    axs[0].set_title("Horizontal cross section")
-    axs[0].set_xlabel("X pixels")
-    axs[0].set_ylabel("Pixel value")
-    axs[0].legend()
+    # # Horizontal line
+    # axs[0].plot(x_pixels, x_line, 'b', label='Data')
+    # axs[0].plot(x_pixels, gaussian(x_pixels, *popt_x), 'r--', label='Gaussian fit')
+    # axs[0].axvline(popt_x[1], color='k', linestyle=':', label='Center')
+    # axs[0].set_title("Horizontal cross section")
+    # axs[0].set_xlabel("X pixels")
+    # axs[0].set_ylabel("Pixel value")
+    # axs[0].legend()
 
-    # Vertical line
-    axs[1].plot(y_pixels, y_line, 'b', label='Data')
-    axs[1].plot(y_pixels, gaussian(y_pixels, *popt_y), 'r--', label='Gaussian fit')
-    axs[1].axvline(popt_y[1], color='k', linestyle=':', label='Center')
-    axs[1].set_title("Vertical cross section")
-    axs[1].set_xlabel("Y pixels")
-    axs[1].set_ylabel("Pixel value")
-    axs[1].legend()
+    # # Vertical line
+    # axs[1].plot(y_pixels, y_line, 'b', label='Data')
+    # axs[1].plot(y_pixels, gaussian(y_pixels, *popt_y), 'r--', label='Gaussian fit')
+    # axs[1].axvline(popt_y[1], color='k', linestyle=':', label='Center')
+    # axs[1].set_title("Vertical cross section")
+    # axs[1].set_xlabel("Y pixels")
+    # axs[1].set_ylabel("Pixel value")
+    # axs[1].legend()
 
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
 
     print(f"Horizontal fit center: {popt_x[1]:.2f}, sigma: {popt_x[2]:.2f}")
     print(f"Vertical fit center: {popt_y[1]:.2f}, sigma: {popt_y[2]:.2f}")
@@ -99,19 +124,8 @@ def fit_2d_gauss_sigma(image_path):
 
     print(f"Image shape: {image.shape}, dtype: {image.dtype}, max: {np.max(image)}")
 
-    # Step 1: Smooth
-    smoothed = gaussian_filter(image, sigma=3)
+    x0_refined, y0_refined = find_center(image)
 
-    # Step 2: Rough center (pixel)
-    y0, x0 = np.unravel_index(np.argmax(smoothed), smoothed.shape)
-
-    # Step 3: Refine with center of mass in a local window
-    window = image[y0-10:y0+10, x0-10:x0+10]
-    dy, dx = center_of_mass(window)
-    y0_refined = int(np.floor(y0 - 10 + dy))
-    x0_refined = int(np.floor(x0 - 10 + dx))
-
-    print(x0_refined,y0_refined)
     # --- Extract small sub-image around click for fitting ---
     half_size = 100   # size of ROI box around click
     x_min = max(0, x0_refined - half_size)
@@ -155,15 +169,19 @@ def fit_2d_gauss_sigma(image_path):
 
     print(time.time()-tinitial)
     # --- Plot data and fit ---
-    fit_img = twoD_gaussian((x_indices, y_indices), *popt).reshape(sub_img.shape)
+    #make x and y array for plotting the fit
+    y_array, x_array = np.indices(image.shape)
 
-    fig, axs = plt.subplots(1, 3, figsize=(15,5))
-    axs[0].imshow(sub_img, cmap="jet", origin="lower")
-    axs[0].contour(x_index,y_index,fit_img, levels=2, cmap = 'YlOrRd') #how do I change the contour's to be plotted on the 1 sigma and 2 sigma of the fit? 
-    axs[0].set_title("Data (cropped)")
-    axs[1].imshow(fit_img, cmap="jet", origin="lower")
-    axs[1].set_title("2D Gaussian Fit")
-    axs[2].imshow(sub_img - fit_img, cmap="bwr", origin="lower")
-    axs[2].set_title("Residuals")
-    plt.tight_layout()
-    plt.show()
+    fit_img = twoD_gaussian((x_array, y_array), *popt).reshape(image.shape)
+
+    # fig, axs = plt.subplots(1, 3, figsize=(15,5))
+    # axs[0].imshow(image, cmap="jet", origin="lower") #plot the full image
+    # axs[0].contour(x_array,y_array,fit_img, levels=2, cmap = 'YlOrRd') #how do I change the contour's to be plotted on the 1 sigma and 2 sigma of the fit? Plot the fit to the full image
+    # axs[0].set_title("Data (cropped)")
+    # axs[1].imshow(fit_img, cmap="jet", origin="lower")
+    # axs[1].set_title("2D Gaussian Fit")
+    # axs[2].imshow(image - fit_img, cmap="bwr", origin="lower")
+    # axs[2].set_title("Residuals")
+    # plt.tight_layout()
+    # plt.show()
+    return sigma_x, sigma_y, mod_theta
